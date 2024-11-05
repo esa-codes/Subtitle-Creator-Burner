@@ -84,19 +84,6 @@ A powerful Python application for creating, translating, and burning subtitles i
    - Click "Start Processing" to begin
    - Monitor progress through the progress bar and status messages
 
-## Project Structure
-
-```
-subtitle-creator/
-├── core/
-│   ├── model_info.py     # Whisper model information and configurations
-│   ├── processor.py      # Main processing logic for subtitles
-│   └── translator.py     # Subtitle translation functionality
-├── gui/
-│   └── main_window.py    # PyQt6 GUI implementation
-└── main.py              # Application entry point
-```
-
 ## Core Components
 
 ### Model Info (model_info.py)
