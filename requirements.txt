@@ -1,0 +1,25 @@
+# GUI Dependencies
+PyQt6
+
+# Core Dependencies
+openai-whisper
+deep-translator
+humanize
+
+# Audio/Video Processing
+ffmpeg-python
+
+# Utility Dependencies
+numpy
+torch
+tqdm
+
+# Optional but recommended for better performance
+# Uncomment if you want to enforce GPU support
+# torch-cuda
+
+# Development Dependencies (optional)
+# pytest
+# black
+# flake8
+# mypy
