@@ -30,19 +30,26 @@ A powerful Python application for creating, translating, and burning subtitles i
   deep-translator
   humanize
   ```
-
+  
 ## Installation
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
-   cd subtitle-creator
+   git clone https://github.com/esa-codes/Subtitle-Creator-Burner.git
+   cd Subtitle-Creator-Burner
    ```
 
 2. Install required packages:
    ```bash
    pip install -r requirements.txt
    ```
+
+3. Install FFmpeg:
+   - **Windows**: Download from [FFmpeg website](https://ffmpeg.org/) and add to PATH
+   - **Linux**: `sudo apt-get install ffmpeg`
+   - **macOS**: `brew install ffmpeg`
+
+[Il resto del README rimane invariato...]
 
 3. Install FFmpeg:
    - **Windows**: Download from [FFmpeg website](https://ffmpeg.org/) and add to PATH
