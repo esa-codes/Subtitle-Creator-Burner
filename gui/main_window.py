@@ -81,9 +81,6 @@ class SubtitleGUI(QMainWindow):
         self.process_button.setEnabled(True)
         self.download_button.setEnabled(True)
 
-    # [Previous UI creation methods remain the same]
-    # ... (init_ui, create_file_section, etc.)
-
     def download_model(self):
         """Manages the download of the selected model."""
         selected = self.model_combo.currentText().split()[0]
