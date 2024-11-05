@@ -193,13 +193,9 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
-
-                     Additional Permissions
-
+             
 This software uses OpenAI's Whisper model, which has its own license terms
 that must be respected in addition to this license.
-
-                     Additional Terms
 
 1. You must cause any work that you distribute or publish, that in whole or in
    part contains or is derived from the Program or any part thereof, to be
