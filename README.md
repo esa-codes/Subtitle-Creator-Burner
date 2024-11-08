@@ -49,8 +49,6 @@ A powerful Python application for creating, translating, and burning subtitles i
    - **Linux**: `sudo apt-get install ffmpeg`
    - **macOS**: `brew install ffmpeg`
 
-[Il resto del README rimane invariato...]
-
 3. Install FFmpeg:
    - **Windows**: Download from [FFmpeg website](https://ffmpeg.org/) and add to PATH
    - **Linux**: `sudo apt-get install ffmpeg`
