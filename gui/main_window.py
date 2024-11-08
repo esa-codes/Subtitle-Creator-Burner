@@ -498,7 +498,7 @@ class SubtitleGUI(QMainWindow):
         widget = QWidget()
         layout = QHBoxLayout()
 
-        self.process_button = QPushButton("Start Processing")
+        self.process_button = QPushButton("Create and burn subtitles")
         self.process_button.clicked.connect(self.start_processing)
         layout.addWidget(self.process_button)
 
