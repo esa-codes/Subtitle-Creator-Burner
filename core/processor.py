@@ -85,9 +85,13 @@ class SubtitleProcessor:
             self.logger.error(f"Error extracting audio: {str(e)}")
             raise
 
+
     def is_model_downloaded(self, model_name: str) -> bool:
-        """Check if a template is already downloaded."""
-        model_path = self.cache_dir / f"{model_name}.pt"
+        """Check if a model is already downloaded."""
+        if model_name == "large":
+            model_path = self.cache_dir / "large-v3.pt"
+        else:
+            model_path = self.cache_dir / f"{model_name}.pt"
         return model_path.exists()
 
     def check_disk_space(self, required_bytes: int) -> bool:
@@ -96,11 +100,22 @@ class SubtitleProcessor:
         return free_space > required_bytes * 1.2
 
     def download_model(self, model_name: str) -> bool:
-        """Download a Whisper template."""
+        """Download a Whisper model."""
         try:
             required_space = ModelInfo.SIZES[model_name]['size']
             if not self.check_disk_space(required_space):
                 raise Exception("Insufficient disk space")
+
+            import os
+            import whisper
+
+            # Set Whisper's download directory to our cache directory
+            os.environ["XDG_CACHE_HOME"] = str(self.cache_dir.parent)
+
+            if self.current_model is not None:
+                del self.current_model
+                import gc
+                gc.collect()
 
             self.current_model = whisper.load_model(model_name)
             return True
