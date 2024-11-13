@@ -6,11 +6,11 @@ class ModelInfo:
     """Information about available Whisper models."""
 
     SIZES = {
-        'tiny': {'size': 150_000_000, 'desc': 'Fastest, least accurate'},
-        'base': {'size': 400_000_000, 'desc': 'Fast, decent accuracy'},
-        'small': {'size': 1_000_000_000, 'desc': 'Balanced speed/accuracy'},
-        'medium': {'size': 3_000_000_000, 'desc': 'Slower, more accurate'},
-        'large': {'size': 6_000_000_000, 'desc': 'Slowest, most accurate'}
+        'tiny': {'size': 75_000_000, 'desc': 'Fastest, least accurate'},
+        'base': {'size': 150_000_000, 'desc': 'Fast, decent accuracy'},
+        'small': {'size': 500_000_000, 'desc': 'Balanced speed/accuracy'},
+        'medium': {'size': 1_500_000_000, 'desc': 'Slower, more accurate'},
+        'large': {'size': 2_900_000_000, 'desc': 'Slowest, most accurate'}
     }
 
     LANGUAGES = {
