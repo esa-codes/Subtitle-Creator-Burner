@@ -245,13 +245,13 @@ class SubtitleProcessor:
             raise
 
     def convert_color_to_hex(self, color_name: str) -> str:
-        """Converts color name to hexadecimal format for FFmpeg."""
+        """Converts color name to hexadecimal format for FFmpeg subtitles (BGR format)."""
         color_map = {
-            'white': '&HFFFFFF&',
-            'yellow': '&H00FFFF&',
-            'black': '&H000000&',
-            'green': '&H00FF00&',
-            'cyan': '&H00FFFF&'
+            'white': '&HFFFFFF&',  # BGR: 255,255,255
+            'yellow': '&H00FFFF&', # BGR: 0,255,255
+            'black': '&H000000&',  # BGR: 0,0,0
+            'green': '&H00FF00&',  # BGR: 0,255,0
+            'cyan': '&HFFFF00&'    # BGR: 255,255,0 - Fixed cyan (swapped blue and red)
         }
         return color_map.get(color_name.lower(), '&HFFFFFF&')
 
