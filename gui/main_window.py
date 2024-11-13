@@ -122,10 +122,6 @@ class SubtitleGUI(QMainWindow):
 
             def do_translate():
                 try:
-                    # Disable buttons during translation
-                    self.process_button.setEnabled(False)
-                    self.download_button.setEnabled(False)
-
                     worker.signals.progress.emit("Starting translation...", 10)
                     worker.signals.progress.emit("Translating subtitles...", 30)
 
@@ -136,16 +132,11 @@ class SubtitleGUI(QMainWindow):
                     )
 
                     worker.signals.progress.emit("Translation completed!", 100)
-                    worker.signals.success.emit(f"Translation completed!\nTranslated file: {output_file}")
                     return output_file
 
                 except Exception as e:
                     worker.signals.error.emit(f"Translation error: {str(e)}")
                     return None
-                finally:
-                    # Re-enable buttons regardless of success/failure
-                    self.process_button.setEnabled(True)
-                    self.download_button.setEnabled(True)
 
             worker = Worker(do_translate)
             worker.signals.progress.connect(self._update_progress)
@@ -160,22 +151,10 @@ class SubtitleGUI(QMainWindow):
 
         except Exception as e:
             self._show_error(f"Error initializing translation: {str(e)}")
-            self.process_button.setEnabled(True)
-            self.download_button.setEnabled(True)
 
-    def _handle_translation_complete(self, message):
+    def _handle_translation_complete(self, output_file):
         """Handle translation completion and ask user about using the translated file."""
-        try:
-            if "Translated file:" not in message:
-                self._show_error("Translation failed - no output file produced")
-                return
-
-            output_file = message.split("\n")[1].replace("Translated file: ", "")
-
-            if not os.path.exists(output_file):
-                self._show_error("Translation failed - output file not found")
-                return
-
+        if output_file and os.path.exists(output_file):
             reply = QMessageBox.question(
                 self, "Success",
                 f"Translation completed!\nUse translated file?\n{output_file}",
@@ -184,9 +163,8 @@ class SubtitleGUI(QMainWindow):
 
             if reply == QMessageBox.StandardButton.Yes:
                 self.srt_path.setText(output_file)
-
-        except Exception as e:
-            self._show_error(f"Error handling translation completion: {str(e)}")
+        else:
+            self._show_error("Translation failed - output file not found")
 
     def burn_subtitles(self):
         if not all([self.video_path.text(), self.srt_path.text()]):
