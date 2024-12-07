@@ -188,10 +188,14 @@ class SubtitleProcessor:
             raise
 
     def burn_subtitles(self, input_video: str, srt_path: str, output_video: str = None,
-                      font_size: str = "24", font_name: str = "Arial",
-                      font_color: str = "white", font_outline: str = "black",
-                      video_quality: str = "23", video_preset: str = "medium",
-                      progress_callback=None) -> bool:
+                       font_size: str = "24", font_name: str = "Arial",
+                       font_color: str = "white", font_outline: str = "black",
+                       video_quality: str = "23", video_preset: str = "medium",
+                       background_color: str = "none", uppercase: bool = False,
+                       word_by_word: bool = False, subtitle_position: str = "bottom",
+                       margin_left: int = 50,  # Aggiungi il parametro margin_left con un valore predefinito
+                       progress_callback=None) -> bool:
+
         """Embed subtitles in your video."""
         try:
             if progress_callback:
@@ -200,20 +204,40 @@ class SubtitleProcessor:
             if output_video is None:
                 output_video = os.path.splitext(input_video)[0] + "_subbed.mp4"
 
-            style = (
-                f"FontSize={font_size},"
-                f"FontName={font_name},"
-                f"PrimaryColour={self.convert_color_to_hex(font_color)},"
-                f"OutlineColour={self.convert_color_to_hex(font_outline)},"
-                "Outline=1,Shadow=1"
-            )
+            # Modify subtitle file if needed
+            if uppercase or word_by_word:
+                modified_srt_path = self.modify_subtitle_file(srt_path, uppercase, word_by_word)
+            else:
+                modified_srt_path = srt_path
+
+
+            # Prepare style with additional options
+            style_components = [
+                f"FontSize={font_size}",
+                f"FontName={font_name}",
+                f"PrimaryColour={self.convert_color_to_hex(font_color)}",
+                f"OutlineColour={self.convert_color_to_hex(font_outline)}",
+                f"MarginL={margin_left}",  # Adjust this value to move subtitle right
+                "Outline=1",
+                "Shadow=1"
+            ]
+
+            # Add subtitle positioning
+            style_components.append(f"Alignment={self._get_alignment(subtitle_position)}")
+
+            # Add background color if specified
+            if background_color != "none":
+                style_components.append(f"BackColour={self.convert_color_to_hex(background_color)}")
+
+            style = ",".join(style_components)
+
 
             if progress_callback:
                 progress_callback("Burning subtitles...", 30)
 
             ffmpeg_cmd = [
                 'ffmpeg', '-i', input_video,
-                '-vf', f"subtitles='{srt_path}':force_style='{style}'",
+                '-vf', f"subtitles='{modified_srt_path}':force_style='{style}'",
                 '-c:v', 'libx264',
                 '-preset', video_preset,
                 '-crf', video_quality,
@@ -235,6 +259,10 @@ class SubtitleProcessor:
             if process.returncode != 0:
                 raise RuntimeError(f"FFmpeg error: {stderr}")
 
+            # Clean up modified subtitle file if it was created
+            if modified_srt_path != srt_path:
+                os.remove(modified_srt_path)
+
             if progress_callback:
                 progress_callback("Burning completed!", 100)
 
@@ -242,6 +270,39 @@ class SubtitleProcessor:
 
         except Exception as e:
             self.logger.error(f"Error burning subtitles: {str(e)}")
+            raise
+
+    def modify_subtitle_file(self, input_srt: str, uppercase: bool = False, word_by_word: bool = False) -> str:
+        """Modify subtitle file based on specified options."""
+        try:
+            # Create a new modified SRT file
+            output_srt = os.path.splitext(input_srt)[0] + "_modified.srt"
+
+            with open(input_srt, 'r', encoding='utf-8') as infile, \
+                 open(output_srt, 'w', encoding='utf-8') as outfile:
+
+                for line in infile:
+                    # Check if this is a subtitle text line
+                    if '-->' not in line and line.strip().isdigit() == False and line.strip():
+                        text = line.strip()
+
+                        # Apply uppercase if selected
+                        if uppercase:
+                            text = text.upper()
+
+                        # Apply word-by-word if selected
+                        if word_by_word:
+                            text = ' '.join([word for word in text.split()])
+
+                        outfile.write(text + '\n')
+                    else:
+                        # Write other lines as they are
+                        outfile.write(line)
+
+            return output_srt
+
+        except Exception as e:
+            self.logger.error(f"Error modifying subtitle file: {str(e)}")
             raise
 
     def convert_color_to_hex(self, color_name: str) -> str:
@@ -265,6 +326,15 @@ class SubtitleProcessor:
             self.logger.error(f"Error translating subtitles: {str(e)}")
             raise
 
+    def _get_alignment(self, position: str) -> str:
+        """Convert position to FFmpeg subtitle alignment."""
+        alignment_map = {
+            "top center": "8",     # Top center
+            "bottom": "2"          # Bottom center (default)
+        }
+        return alignment_map.get(position, "2")  # Default to bottom
+
+
     def load_settings(self) -> Dict:
         """Load saved settings."""
         try:
@@ -279,6 +349,9 @@ class SubtitleProcessor:
                 'font_name': "Arial",
                 'font_color': "white",
                 'font_outline': "black",
+                'background_color': "none",
+                'uppercase': False,
+                'word_by_word': False,
                 'whisper_model': "base",
                 'whisper_language': "auto",
                 'video_quality': "23",
