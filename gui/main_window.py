@@ -2,7 +2,7 @@
 
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                            QHBoxLayout, QLabel, QLineEdit, QComboBox, QPushButton,
-                           QProgressBar, QFileDialog, QGroupBox, QMessageBox, QGridLayout)
+                           QProgressBar, QFileDialog, QGroupBox, QMessageBox, QGridLayout, QCheckBox, QSlider)
 from PyQt6.QtCore import Qt, pyqtSignal, QRunnable, QThreadPool, QObject
 import os
 import sys
@@ -183,8 +183,14 @@ class SubtitleGUI(QMainWindow):
                     font_outline=self.font_outline.currentText(),
                     video_quality=self.video_quality.currentText(),
                     video_preset=self.video_preset.currentText(),
+                    background_color=self.background_color.currentText(),
+                    uppercase=self.uppercase_option.isChecked(),
+                    word_by_word=self.word_by_word_option.isChecked(),
+                    subtitle_position=self.subtitle_position.currentText(),
+                    margin_left=self.margin_slider.value(),  # Pass slider value
                     progress_callback=lambda status, value: worker.signals.progress.emit(status, value)
                 )
+
                 worker.signals.success.emit("Video processing completed!")
             except Exception as e:
                 worker.signals.error.emit(str(e))
@@ -262,6 +268,22 @@ class SubtitleGUI(QMainWindow):
 
                 # Phase 2: Burn subtitles (50-100% progress)
                 worker.signals.progress.emit("Preparing for subtitle burning...", 50)
+
+                # Burn subtitles phase
+                self.processor.burn_subtitles(
+                    video_path,
+                    srt_path,
+                    font_size=self.font_size.currentText(),
+                    font_name=self.font_name.currentText(),
+                    font_color=self.font_color.currentText(),
+                    font_outline=self.font_outline.currentText(),
+                    video_quality=self.video_quality.currentText(),
+                    video_preset=self.video_preset.currentText(),
+                    background_color=self.background_color.currentText(),
+                    uppercase=self.uppercase_option.isChecked(),
+                    word_by_word=self.word_by_word_option.isChecked(),
+                    progress_callback=burn_progress
+                )
 
                 def burn_progress(status, value):
                     # Scale progress from 0-100 to 50-100
@@ -422,8 +444,45 @@ class SubtitleGUI(QMainWindow):
         layout.addWidget(QLabel("Outline:"), 1, 2)
         layout.addWidget(self.font_outline, 1, 3)
 
+        # Background color
+        self.background_color = QComboBox()
+        self.background_color.addItems(["none", "black", "white", "gray"])
+        layout.addWidget(QLabel("Background:"), 2, 0)
+        layout.addWidget(self.background_color, 2, 1)
+
+        # Uppercase option
+        self.uppercase_option = QCheckBox("Uppercase")
+        layout.addWidget(self.uppercase_option, 2, 2)
+
+        # Word-by-word option
+        self.word_by_word_option = QCheckBox("Word by Word")
+        layout.addWidget(self.word_by_word_option, 2, 3)
+
+        # Subtitle position
+        self.subtitle_position = QComboBox()
+        self.subtitle_position.addItems(["bottom", "top center"])
+        layout.addWidget(QLabel("Position:"), 3, 0)
+        layout.addWidget(self.subtitle_position, 3, 1)
+
+        # Add MarginL slider
+        self.margin_slider = QSlider(Qt.Orientation.Horizontal)
+        self.margin_slider.setMinimum(0)  # Min margin
+        self.margin_slider.setMaximum(500)  # Max margin
+        self.margin_slider.setValue(200)  # Default margin
+        self.margin_slider.valueChanged.connect(self.update_margin_label)
+
+        self.margin_label = QLabel("MarginL: 200")  # Label to show current value
+        layout.addWidget(self.margin_label, 4, 0, 1, 2)
+        layout.addWidget(self.margin_slider, 4, 2, 1, 2)
+
         group.setLayout(layout)
         return group
+
+    def update_margin_label(self):
+        """Update the MarginL label based on slider value."""
+        value = self.margin_slider.value()
+        self.margin_label.setText(f"MarginL: {value}")
+
 
     def create_translation_section(self) -> QGroupBox:
         """Create the translation section."""
@@ -537,17 +596,25 @@ class SubtitleGUI(QMainWindow):
             self.font_name.setCurrentText(settings.get('font_name', "Arial"))
             self.font_color.setCurrentText(settings.get('font_color', "white"))
             self.font_outline.setCurrentText(settings.get('font_outline', "black"))
+            self.background_color.setCurrentText(settings.get('background_color', "none"))
+            self.uppercase_option.setChecked(settings.get('uppercase', False))
+            self.word_by_word_option.setChecked(settings.get('word_by_word', False))
+            self.subtitle_position.setCurrentText(settings.get('subtitle_position', "bottom"))
             self.video_quality.setCurrentText(settings.get('video_quality', "23"))
             self.video_preset.setCurrentText(settings.get('video_preset', "medium"))
 
-            # Find and set the correct model
+            # Set MarginL value
+            margin_left = settings.get('margin_left', 200)  # Default to 200
+            self.margin_slider.setValue(margin_left)
+            self.margin_label.setText(f"MarginL: {margin_left}")
+
+            # Set model and language
             model_name = settings.get('whisper_model', "base")
             for i in range(self.model_combo.count()):
                 if self.model_combo.itemText(i).startswith(model_name):
                     self.model_combo.setCurrentIndex(i)
                     break
 
-            # Find and set the correct language
             language = settings.get('whisper_language', "auto")
             for i in range(self.language_combo.count()):
                 if self.language_combo.itemText(i).startswith(language):
@@ -557,6 +624,7 @@ class SubtitleGUI(QMainWindow):
         except Exception as e:
             self._show_error(f"Error loading settings: {str(e)}")
 
+
     def save_current_settings(self):
         """Save the current settings."""
         try:
@@ -565,10 +633,15 @@ class SubtitleGUI(QMainWindow):
                 'font_name': self.font_name.currentText(),
                 'font_color': self.font_color.currentText(),
                 'font_outline': self.font_outline.currentText(),
+                'background_color': self.background_color.currentText(),
+                'uppercase': self.uppercase_option.isChecked(),
+                'word_by_word': self.word_by_word_option.isChecked(),
                 'whisper_model': self.model_combo.currentText().split()[0],
                 'whisper_language': self.language_combo.currentText().split()[0],
                 'video_quality': self.video_quality.currentText(),
-                'video_preset': self.video_preset.currentText()
+                'video_preset': self.video_preset.currentText(),
+                'subtitle_position': self.subtitle_position.currentText(),
+                'margin_left': self.margin_slider.value()
             }
 
             self.processor.save_settings(settings)
