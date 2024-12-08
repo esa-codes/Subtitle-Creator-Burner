@@ -193,10 +193,8 @@ class SubtitleProcessor:
                        video_quality: str = "23", video_preset: str = "medium",
                        background_color: str = "none", uppercase: bool = False,
                        word_by_word: bool = False, subtitle_position: str = "bottom",
-                       margin_left: int = 50,  # Aggiungi il parametro margin_left con un valore predefinito
+                       margin_left: int = 50,
                        progress_callback=None) -> bool:
-
-        """Embed subtitles in your video."""
         try:
             if progress_callback:
                 progress_callback("Preparing burning process...", 10)
@@ -217,17 +215,31 @@ class SubtitleProcessor:
                 f"FontName={font_name}",
                 f"PrimaryColour={self.convert_color_to_hex(font_color)}",
                 f"OutlineColour={self.convert_color_to_hex(font_outline)}",
-                f"MarginL={margin_left}",  # Adjust this value to move subtitle right
+                f"MarginL={margin_left}",
+                f"MarginR=50",
+                f"MarginV=20",
                 "Outline=1",
                 "Shadow=1"
             ]
+
 
             # Add subtitle positioning
             style_components.append(f"Alignment={self._get_alignment(subtitle_position)}")
 
             # Add background color if specified
-            if background_color != "none":
-                style_components.append(f"BackColour={self.convert_color_to_hex(background_color)}")
+            if background_color == "none":
+                style_components.extend([
+                    "BorderStyle=1",
+                    "Outline=1"
+                ])
+            else:
+                # Configure background
+                style_components.extend([
+                    f"BackColour={self.convert_color_to_hex(background_color)}",
+                    "BorderStyle=3",
+                    "Outline=1"
+                ])
+
 
             style = ",".join(style_components)
 
@@ -308,13 +320,17 @@ class SubtitleProcessor:
     def convert_color_to_hex(self, color_name: str) -> str:
         """Converts color name to hexadecimal format for FFmpeg subtitles (BGR format)."""
         color_map = {
-            'white': '&HFFFFFF&',  # BGR: 255,255,255
-            'yellow': '&H00FFFF&', # BGR: 0,255,255
-            'black': '&H000000&',  # BGR: 0,0,0
-            'green': '&H00FF00&',  # BGR: 0,255,0
-            'cyan': '&HFFFF00&'    # BGR: 255,255,0 - Fixed cyan (swapped blue and red)
+            'white': '&HFFFFFF&',    # BGR: 255,255,255
+            'yellow': '&H00FFFF&',   # BGR: 0,255,255
+            'black': '&H000000&',    # BGR: 0,0,0
+            'green': '&H00FF00&',    # BGR: 0,255,0
+            'cyan': '&HFFFF00&',     # BGR: 255,255,0
+            'gray': '&H808080&',     # BGR: 128,128,128
+            'none': ''               # Nessun colore
         }
         return color_map.get(color_name.lower(), '&HFFFFFF&')
+
+
 
     def translate_subtitles(self, input_srt: str, from_lang: str, to_lang: str) -> str:
         """Translate subtitles."""
