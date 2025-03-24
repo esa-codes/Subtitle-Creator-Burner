@@ -2,8 +2,10 @@
 
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                            QHBoxLayout, QLabel, QLineEdit, QComboBox, QPushButton,
-                           QProgressBar, QFileDialog, QGroupBox, QMessageBox, QGridLayout, QCheckBox, QSlider)
+                           QProgressBar, QFileDialog, QGroupBox, QMessageBox, QGridLayout, 
+                           QCheckBox, QSlider, QTabWidget, QFrame, QSizePolicy, QSpacerItem)
 from PyQt6.QtCore import Qt, pyqtSignal, QRunnable, QThreadPool, QObject
+from PyQt6.QtGui import QFont, QIcon, QColor, QPalette
 import os
 import sys
 import humanize
@@ -44,7 +46,7 @@ class SubtitleGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Subtitle Creator & Burner")
-        self.setMinimumSize(800, 600)
+        self.setMinimumSize(900, 650)  # Increased size for better layout
 
         # Initialize thread pool
         self.threadpool = QThreadPool()
@@ -269,22 +271,7 @@ class SubtitleGUI(QMainWindow):
                 # Phase 2: Burn subtitles (50-100% progress)
                 worker.signals.progress.emit("Preparing for subtitle burning...", 50)
 
-                # Burn subtitles phase
-                self.processor.burn_subtitles(
-                    video_path,
-                    srt_path,
-                    font_size=self.font_size.currentText(),
-                    font_name=self.font_name.currentText(),
-                    font_color=self.font_color.currentText(),
-                    font_outline=self.font_outline.currentText(),
-                    video_quality=self.video_quality.currentText(),
-                    video_preset=self.video_preset.currentText(),
-                    background_color=self.background_color.currentText(),
-                    uppercase=self.uppercase_option.isChecked(),
-                    word_by_word=self.word_by_word_option.isChecked(),
-                    progress_callback=burn_progress
-                )
-
+                # Define burn_progress function before using it
                 def burn_progress(status, value):
                     # Scale progress from 0-100 to 50-100
                     scaled_value = 50 + (value // 2)
@@ -300,6 +287,11 @@ class SubtitleGUI(QMainWindow):
                     font_outline=self.font_outline.currentText(),
                     video_quality=self.video_quality.currentText(),
                     video_preset=self.video_preset.currentText(),
+                    background_color=self.background_color.currentText(),
+                    uppercase=self.uppercase_option.isChecked(),
+                    word_by_word=self.word_by_word_option.isChecked(),
+                    subtitle_position=self.subtitle_position.currentText(),
+                    margin_left=self.margin_slider.value(),
                     progress_callback=burn_progress
                 )
 
@@ -346,22 +338,76 @@ class SubtitleGUI(QMainWindow):
         self.setCentralWidget(main_widget)
         main_layout = QVBoxLayout(main_widget)
 
-        # Create UI sections
-        main_layout.addWidget(self.create_file_section())
-        main_layout.addWidget(self.create_model_section())
-        main_layout.addWidget(self.create_font_section())
-        main_layout.addWidget(self.create_translation_section())
-        main_layout.addWidget(self.create_video_section())
-        main_layout.addWidget(self.create_control_section())
-        main_layout.addWidget(self.create_progress_section())
+        # Create tab widget for better organization
+        self.tab_widget = QTabWidget()
+        
+        # Main tab - Essential controls
+        main_tab = QWidget()
+        main_tab_layout = QVBoxLayout(main_tab)
+        
+        # File selection at the top
+        main_tab_layout.addWidget(self.create_file_section())
+        
+        # Add spacer
+        main_tab_layout.addItem(QSpacerItem(20, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed))
+        
+        # Language selection (moved from model settings to main tab)
+        language_group = QGroupBox("Language")
+        language_layout = QHBoxLayout()
+        self.language_combo = QComboBox()
+        languages = [(code, name) for code, name in ModelInfo.LANGUAGES.items()]
+        self.language_combo.addItems([f"{code} - {name}" for code, name in languages])
+        language_layout.addWidget(QLabel("Recognition Language:"))
+        language_layout.addWidget(self.language_combo)
+        language_group.setLayout(language_layout)
+        main_tab_layout.addWidget(language_group)
+        
+        # Process button (larger and more prominent)
+        self.process_button = QPushButton("Create and Burn Subtitles")
+        self.process_button.setMinimumHeight(40)
+        self.process_button.clicked.connect(self.start_processing)
+        main_tab_layout.addWidget(self.process_button)
+        
+        # Progress section
+        main_tab_layout.addWidget(self.create_progress_section())
+        
+        # Add the main tab
+        self.tab_widget.addTab(main_tab, "Main")
+        
+        # Settings tab
+        settings_tab = QWidget()
+        settings_tab_layout = QVBoxLayout(settings_tab)
+        
+        # Model settings (simplified)
+        settings_tab_layout.addWidget(self.create_model_section())
+        
+        # Font settings (simplified)
+        settings_tab_layout.addWidget(self.create_font_section())
+        
+        # Video settings
+        settings_tab_layout.addWidget(self.create_video_section())
+        
+        self.tab_widget.addTab(settings_tab, "Settings")
+        
+        # Translation tab
+        translation_tab = QWidget()
+        translation_tab_layout = QVBoxLayout(translation_tab)
+        translation_tab_layout.addWidget(self.create_translation_section())
+        self.tab_widget.addTab(translation_tab, "Translation")
+        
+        # Add the tab widget to the main layout
+        main_layout.addWidget(self.tab_widget)
 
     def create_file_section(self) -> QGroupBox:
         """Create the section for file selection."""
         group = QGroupBox("File Selection")
         layout = QGridLayout()
+        layout.setContentsMargins(10, 15, 10, 10)
+        layout.setSpacing(10)
 
         # Video selection
         self.video_path = QLineEdit()
+        self.video_path.setPlaceholderText("Select a video file...")
         video_browse = QPushButton("Browse")
         video_browse.clicked.connect(self.select_video)
         layout.addWidget(QLabel("Video:"), 0, 0)
@@ -370,6 +416,7 @@ class SubtitleGUI(QMainWindow):
 
         # SRT selection
         self.srt_path = QLineEdit()
+        self.srt_path.setPlaceholderText("SRT file will be created automatically...")
         srt_browse = QPushButton("Browse")
         srt_browse.clicked.connect(self.select_srt)
         layout.addWidget(QLabel("SRT:"), 1, 0)
@@ -380,100 +427,105 @@ class SubtitleGUI(QMainWindow):
         return group
 
     def create_model_section(self) -> QGroupBox:
-        """Create the Whisper model settings section."""
-        group = QGroupBox("Whisper Model Settings")
-        layout = QGridLayout()
-
+        """Create the Whisper model settings section (simplified)."""
+        group = QGroupBox("Whisper Model")
+        layout = QVBoxLayout()
+        
+        # Model selection with horizontal layout
+        model_layout = QHBoxLayout()
+        
         # Model selection
         self.model_combo = QComboBox()
         models = list(ModelInfo.SIZES.keys())
         model_infos = [ModelInfo.get_model_info(m) for m in models]
         self.model_combo.addItems(model_infos)
         self.model_combo.currentIndexChanged.connect(self._update_ui)
-
+        
+        model_layout.addWidget(QLabel("Model:"))
+        model_layout.addWidget(self.model_combo, 1)  # Give it stretch factor
+        
         # Model status and download
         self.model_status = QLabel("Not downloaded")
-        self.download_button = QPushButton("Download Model")
+        self.download_button = QPushButton("Download")
         self.download_button.clicked.connect(self.download_model)
-
-        layout.addWidget(QLabel("Model:"), 0, 0)
-        layout.addWidget(self.model_combo, 0, 1)
-        layout.addWidget(self.model_status, 0, 2)
-        layout.addWidget(self.download_button, 0, 3)
-
-        # Language selection
-        self.language_combo = QComboBox()
-        languages = [(code, name) for code, name in ModelInfo.LANGUAGES.items()]
-        self.language_combo.addItems([f"{code} - {name}" for code, name in languages])
-        layout.addWidget(QLabel("Language:"), 1, 0)
-        layout.addWidget(self.language_combo, 1, 1)
-
+        
+        model_layout.addWidget(self.model_status)
+        model_layout.addWidget(self.download_button)
+        
+        layout.addLayout(model_layout)
+        
         # Progress bar
         self.download_progress = QProgressBar()
-        layout.addWidget(self.download_progress, 2, 0, 1, 4)
+        layout.addWidget(self.download_progress)
+        
+        # Add description
+        description = QLabel("Select a model based on your needs. Larger models are more accurate but slower.")
+        description.setWordWrap(True)
+        layout.addWidget(description)
 
         group.setLayout(layout)
         return group
 
     def create_font_section(self) -> QGroupBox:
-        """Create the section for font settings."""
-        group = QGroupBox("Font Settings")
+        """Create the section for font settings (simplified)."""
+        group = QGroupBox("Subtitle Appearance")
         layout = QGridLayout()
-
-        # Font size
+        
+        # First row: Font size and font name
         self.font_size = QComboBox()
         self.font_size.addItems(["16", "20", "24", "28", "32", "36", "40", "48"])
         layout.addWidget(QLabel("Size:"), 0, 0)
         layout.addWidget(self.font_size, 0, 1)
 
-        # Font family
         self.font_name = QComboBox()
         self.font_name.addItems(["Arial", "Times New Roman", "Helvetica", "Courier"])
         layout.addWidget(QLabel("Font:"), 0, 2)
         layout.addWidget(self.font_name, 0, 3)
 
-        # Font color
+        # Second row: Colors
         self.font_color = QComboBox()
         self.font_color.addItems(["white", "yellow", "green", "cyan"])
-        layout.addWidget(QLabel("Color:"), 1, 0)
+        layout.addWidget(QLabel("Text Color:"), 1, 0)
         layout.addWidget(self.font_color, 1, 1)
 
-        # Outline color
         self.font_outline = QComboBox()
         self.font_outline.addItems(["black", "white", "none"])
         layout.addWidget(QLabel("Outline:"), 1, 2)
         layout.addWidget(self.font_outline, 1, 3)
-
-        # Background color
-        self.background_color = QComboBox()
-        self.background_color.addItems(["none", "black", "white", "gray"])
-        layout.addWidget(QLabel("Background:"), 2, 0)
-        layout.addWidget(self.background_color, 2, 1)
-
-        # Uppercase option
-        self.uppercase_option = QCheckBox("Uppercase")
-        layout.addWidget(self.uppercase_option, 2, 2)
-
-        # Word-by-word option
-        self.word_by_word_option = QCheckBox("Word by Word")
-        layout.addWidget(self.word_by_word_option, 2, 3)
-
-        # Subtitle position
+        
+        # Third row: Position and options
         self.subtitle_position = QComboBox()
         self.subtitle_position.addItems(["bottom", "top center"])
-        layout.addWidget(QLabel("Position:"), 3, 0)
-        layout.addWidget(self.subtitle_position, 3, 1)
-
-        # Add MarginL slider
+        layout.addWidget(QLabel("Position:"), 2, 0)
+        layout.addWidget(self.subtitle_position, 2, 1)
+        
+        options_layout = QHBoxLayout()
+        self.uppercase_option = QCheckBox("UPPERCASE")
+        self.word_by_word_option = QCheckBox("Word by Word")
+        options_layout.addWidget(self.uppercase_option)
+        options_layout.addWidget(self.word_by_word_option)
+        layout.addLayout(options_layout, 2, 2, 1, 2)
+        
+        # Fourth row: Background
+        self.background_color = QComboBox()
+        self.background_color.addItems(["none", "black", "white", "gray"])
+        layout.addWidget(QLabel("Background:"), 3, 0)
+        layout.addWidget(self.background_color, 3, 1)
+        
+        # Fifth row: Margin slider
+        margin_layout = QHBoxLayout()
         self.margin_slider = QSlider(Qt.Orientation.Horizontal)
-        self.margin_slider.setMinimum(0)  # Min margin
-        self.margin_slider.setMaximum(500)  # Max margin
-        self.margin_slider.setValue(200)  # Default margin
+        self.margin_slider.setMinimum(0)
+        self.margin_slider.setMaximum(500)
+        self.margin_slider.setValue(200)
         self.margin_slider.valueChanged.connect(self.update_margin_label)
-
-        self.margin_label = QLabel("MarginL: 200")  # Label to show current value
-        layout.addWidget(self.margin_label, 4, 0, 1, 2)
-        layout.addWidget(self.margin_slider, 4, 2, 1, 2)
+        
+        self.margin_label = QLabel("Margin: 200")
+        margin_layout.addWidget(QLabel("Margin:"))
+        margin_layout.addWidget(self.margin_slider)
+        margin_layout.addWidget(self.margin_label)
+        
+        layout.addLayout(margin_layout, 3, 2, 1, 2)
 
         group.setLayout(layout)
         return group
@@ -485,62 +537,73 @@ class SubtitleGUI(QMainWindow):
 
 
     def create_translation_section(self) -> QGroupBox:
-        """Create the translation section."""
-        group = QGroupBox("Translation")
-        layout = QGridLayout()
-
+        """Create the translation section (simplified)."""
+        group = QGroupBox("Subtitle Translation")
+        layout = QVBoxLayout()
+        
+        # Language selection
+        lang_layout = QGridLayout()
+        
         # From language
         self.trans_from = QComboBox()
         self.trans_from.addItems(self.processor.translator.get_supported_languages())
-        layout.addWidget(QLabel("From:"), 0, 0)
-        layout.addWidget(self.trans_from, 0, 1)
+        lang_layout.addWidget(QLabel("From:"), 0, 0)
+        lang_layout.addWidget(self.trans_from, 0, 1)
 
         # To language
         self.trans_to = QComboBox()
         self.trans_to.addItems(self.processor.translator.get_supported_languages())
-        layout.addWidget(QLabel("To:"), 0, 2)
-        layout.addWidget(self.trans_to, 0, 3)
-
+        lang_layout.addWidget(QLabel("To:"), 0, 2)
+        lang_layout.addWidget(self.trans_to, 0, 3)
+        
+        layout.addLayout(lang_layout)
+        
+        # Description
+        description = QLabel("Translate your subtitles from one language to another. Select an SRT file first.")
+        description.setWordWrap(True)
+        layout.addWidget(description)
+        
         # Translate button
         translate_button = QPushButton("Translate SRT")
+        translate_button.setMinimumHeight(40)
         translate_button.clicked.connect(self.translate_srt)
-        layout.addWidget(translate_button, 1, 0, 1, 4)
+        layout.addWidget(translate_button)
 
         group.setLayout(layout)
         return group
 
     def create_video_section(self) -> QGroupBox:
-        """Create the section for video settings."""
-        group = QGroupBox("Video Settings")
-        layout = QGridLayout()
+        """Create the section for video settings (simplified)."""
+        group = QGroupBox("Video Output Settings")
+        layout = QHBoxLayout()
 
         # Quality (CRF)
+        quality_layout = QVBoxLayout()
+        quality_layout.addWidget(QLabel("Quality:"))
         self.video_quality = QComboBox()
-        self.video_quality.addItems(["18", "23", "28"])
-        layout.addWidget(QLabel("Quality:"), 0, 0)
-        layout.addWidget(self.video_quality, 0, 1)
+        self.video_quality.addItems(["18 (High)", "23 (Medium)", "28 (Low)"])
+        quality_layout.addWidget(self.video_quality)
+        layout.addLayout(quality_layout)
 
         # Encoding preset
+        preset_layout = QVBoxLayout()
+        preset_layout.addWidget(QLabel("Encoding Speed:"))
         self.video_preset = QComboBox()
         self.video_preset.addItems(["ultrafast", "superfast", "veryfast", "faster",
                                   "fast", "medium", "slow"])
-        layout.addWidget(QLabel("Preset:"), 0, 2)
-        layout.addWidget(self.video_preset, 0, 3)
+        preset_layout.addWidget(self.video_preset)
+        layout.addLayout(preset_layout)
+        
+        # Description
+        description = QLabel("Higher quality requires more processing time. Faster encoding presets may reduce quality.")
+        description.setWordWrap(True)
+        
+        main_layout = QVBoxLayout()
+        main_layout.addLayout(layout)
+        main_layout.addWidget(description)
 
-        group.setLayout(layout)
+        group.setLayout(main_layout)
         return group
-
-    def create_control_section(self) -> QWidget:
-        """Create the controls section."""
-        widget = QWidget()
-        layout = QHBoxLayout()
-
-        self.process_button = QPushButton("Create and burn subtitles")
-        self.process_button.clicked.connect(self.start_processing)
-        layout.addWidget(self.process_button)
-
-        widget.setLayout(layout)
-        return widget
 
     def create_progress_section(self) -> QGroupBox:
         """Create the section for the progress bar."""
@@ -548,7 +611,9 @@ class SubtitleGUI(QMainWindow):
         layout = QVBoxLayout()
 
         self.progress_bar = QProgressBar()
+        self.progress_bar.setMinimumHeight(25)
         self.status_label = QLabel("Ready")
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         layout.addWidget(self.progress_bar)
         layout.addWidget(self.status_label)
